@@ -17,8 +17,8 @@
 
 @implementation LYYDanmakuItemView
 {
-    CAAnimation *_animationViewPosition;
     NSArray *_backGroudColors;
+    CGRect _destinationRect;
 }
 
 + (CGFloat)itemHeight
@@ -38,7 +38,7 @@
         
         self.userInteractionEnabled = NO;
         _velocity = 100;
-//        _backGroudColors = [NSArray arrayWithObjects:COLOR_ALPHA_HEX(0x00b4ff, 0.5), COLOR_ALPHA_HEX(0x7208d5, 0.5),COLOR_ALPHA_HEX(0x268608, 0.5),COLOR_ALPHA_HEX(0xffc600, 0.5),nil];
+        //        _backGroudColors = [NSArray arrayWithObjects:COLOR_ALPHA_HEX(0x00b4ff, 0.5), COLOR_ALPHA_HEX(0x7208d5, 0.5),COLOR_ALPHA_HEX(0x268608, 0.5),COLOR_ALPHA_HEX(0xffc600, 0.5),nil];
         
         self.backgroundColor = [UIColor clearColor];
         
@@ -55,13 +55,13 @@
         _contentLabel.textColor = [UIColor whiteColor];
         _contentLabel.shadowOffset = CGSizeMake(1, 1);
         _contentLabel.shadowColor = [UIColor blackColor];
-
+        
         _likeNumberBtn = [[UIButton alloc] initWithFrame:CGRectZero];
         [self addSubview:_likeNumberBtn];
         [_likeNumberBtn setImage:[UIImage imageNamed:@"video_barrage_zan"] forState:UIControlStateNormal];
         NSInteger index = arc4random() % (_backGroudColors.count);
         _likeNumberBtn.backgroundColor = _backGroudColors[index];
-
+        
         
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(UIApplicationDidBecomeActiveNotification) name:UIApplicationDidBecomeActiveNotification object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(UIApplicationWillResignActiveNotification) name:UIApplicationWillResignActiveNotification object:nil];
@@ -80,7 +80,7 @@
 {
     CGRect selfFrame = self.frame;
     selfFrame.size.height = _micro.frame.size.height + 10;
-
+    
     CGFloat frontBackSpace = 10;
     CGRect microFrame = _micro.frame;
     microFrame.origin.x = frontBackSpace;
@@ -130,24 +130,35 @@
     [_likeNumberBtn setContentEdgeInsets:UIEdgeInsetsMake(0, space, 0, space)];
     
     _likeNumberBtn.center = CGPointMake(_likeNumberBtn.center.x, _contentLabel.center.y);
-
+    
     selfFrame.size.width = likeNumberFrame.origin.x + likeNumberFrame.size.width + frontBackSpace;
     self.frame = selfFrame;
-
+    
 }
 
 - (void)fire
 {
-    CALayer *layer = self.layer.presentationLayer;
-    layer.backgroundColor = [UIColor orangeColor].CGColor;
     NSTimeInterval t = (CGRectGetWidth(self.bounds) + CGRectGetWidth([UIScreen mainScreen].bounds)) / _velocity;
-    [UIView animateWithDuration:t delay:0 options:UIViewAnimationOptionCurveLinear animations:^{
-        self.frame = CGRectMake(-CGRectGetWidth(self.frame), self.frame.origin.y, CGRectGetWidth(self.frame), CGRectGetHeight(self.frame));
-    } completion:^(BOOL finished) {
-        if (finished) {
-            [self removeFromSuperview];
-        }
-    }];
+    
+    _destinationRect = CGRectMake(-CGRectGetWidth(self.frame), self.frame.origin.y, CGRectGetWidth(self.frame), CGRectGetHeight(self.frame));
+    CGPoint startPosition = self.layer.position;
+    CGPoint endPosition = CGPointMake(CGRectGetMidX(_destinationRect), CGRectGetMidY(_destinationRect));
+    CABasicAnimation *animation = [CABasicAnimation animationWithKeyPath:@"position"];
+    animation.fromValue = [NSValue valueWithCGPoint:startPosition];
+    animation.toValue = [NSValue valueWithCGPoint:endPosition];
+    animation.duration = t;
+    animation.delegate = self;
+    animation.removedOnCompletion = NO;
+    animation.timingFunction = [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionLinear];
+    [self.layer addAnimation:animation forKey:@"position"];
+    self.layer.position = endPosition;
+}
+
+- (void)animationDidStop:(CAAnimation *)anim finished:(BOOL)flag
+{
+    if (flag) {
+        [self removeFromSuperview];
+    }
 }
 
 - (void)stop
@@ -160,36 +171,38 @@
 - (void)pause
 {
     CALayer *layer = self.layer;
-    _animationViewPosition = [[layer animationForKey:@"position"] copy];
     CFTimeInterval pausedTime = [layer convertTime:CACurrentMediaTime() fromLayer:nil];
     layer.speed = 0.0;
     layer.timeOffset = pausedTime;
+    
+    CGRect rect = self.frame;
+    if (layer.presentationLayer) {
+        rect = ((CALayer *)layer.presentationLayer).frame;
+        rect.origin.x-=1;
+    }
+    self.frame = rect;
 }
 
 -(void)resume
 {
     CALayer *layer = self.layer;
-    
-    if (_animationViewPosition) {
-        [layer addAnimation:_animationViewPosition forKey:@"position"];
-    }
-    
     CFTimeInterval pausedTime = [layer timeOffset];
     layer.speed = 1.0;
     layer.timeOffset = 0.0;
     layer.beginTime = 0.0;
     CFTimeInterval timeSincePause = [layer convertTime:CACurrentMediaTime() fromLayer:nil] - pausedTime;
     layer.beginTime = timeSincePause;
+    self.frame = _destinationRect;
 }
 
 
 - (void)UIApplicationDidBecomeActiveNotification
 {
-    [self resume];
+    //    [self resume];
 }
 
 - (void)UIApplicationWillResignActiveNotification
 {
-    [self pause];
+    //    [self pause];
 }
 @end

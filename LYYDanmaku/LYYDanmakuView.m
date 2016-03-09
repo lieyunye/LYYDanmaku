@@ -58,7 +58,9 @@
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(UIApplicationWillEnterForegroundNotification) name:UIApplicationWillEnterForegroundNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(UIApplicationWillResignActiveNotification) name:UIApplicationWillResignActiveNotification object:nil];
-    [self loadDanmaku];
+    NSTimer *timer = [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(loadDanmaku) userInfo:nil repeats:YES];
+    [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
+    [timer fire];
 }
 
 - (void)initTracks
@@ -110,7 +112,6 @@
     NSInteger index = arc4random() % string.length;
     model.danmakuContent = [string substringToIndex:index];
     [self showDanmaku:model];
-    [self performSelector:@selector(loadDanmaku) withObject:nil afterDelay:1/5.0];
 }
 
 - (void)showDanmaku:(LYYDanmakuModel *)model
@@ -172,11 +173,11 @@
 
 - (void)UIApplicationWillEnterForegroundNotification
 {
-    //    [self resumeTracks];
+//        [self resumeTracks];
 }
 
 - (void)UIApplicationWillResignActiveNotification
 {
-    //    [self pauseTracks];
+        [self pauseTracks];
 }
 @end
